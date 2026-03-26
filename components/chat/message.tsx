@@ -1,54 +1,149 @@
 "use client";
-import type { UseChatHelpers } from "@ai-sdk/react";
-import type { Vote } from "@/lib/db/schema";
+
+import { CheckIcon, DownloadIcon, MailIcon, SendIcon } from "lucide-react";
+import Image from "next/image";
+import { useState } from "react";
+import { toast } from "sonner";
 import type { ChatMessage } from "@/lib/types";
 import { cn, sanitizeText } from "@/lib/utils";
 import { MessageContent, MessageResponse } from "../ai-elements/message";
 import { Shimmer } from "../ai-elements/shimmer";
-import {
-  Tool,
-  ToolContent,
-  ToolHeader,
-  ToolInput,
-  ToolOutput,
-} from "../ai-elements/tool";
-import { useDataStream } from "./data-stream-provider";
-import { DocumentToolResult } from "./document";
-import { DocumentPreview } from "./document-preview";
+import { Button } from "../ui/button";
 import { SparklesIcon } from "./icons";
-import { MessageActions } from "./message-actions";
-import { MessageReasoning } from "./message-reasoning";
 import { PreviewAttachment } from "./preview-attachment";
-import { Weather } from "./weather";
+
+function ShareWithArtistButton({ imageUrl }: { imageUrl: string }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [isSent, setIsSent] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [notes, setNotes] = useState("");
+
+  const handleShare = async () => {
+    setIsSending(true);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/share`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            imageUrl,
+            customerName: name || undefined,
+            customerEmail: email || undefined,
+            notes: notes || undefined,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        setIsSent(true);
+        toast.success("Diseño enviado al tatuador correctamente");
+        setTimeout(() => {
+          setIsOpen(false);
+          setIsSent(false);
+        }, 2000);
+      } else {
+        toast.error("Error al enviar el email. Inténtalo de nuevo.");
+      }
+    } catch {
+      toast.error("Error de conexión. Inténtalo de nuevo.");
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  if (!isOpen) {
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        className="gap-1.5 text-xs"
+        onClick={() => setIsOpen(true)}
+      >
+        <SendIcon className="size-3.5" />
+        Compartir con tatuador
+      </Button>
+    );
+  }
+
+  return (
+    <div className="w-full max-w-sm rounded-xl border border-border/40 bg-card p-4 shadow-md animate-in fade-in slide-in-from-bottom-2 duration-200">
+      <div className="flex items-center gap-2 mb-3">
+        <MailIcon className="size-4 text-muted-foreground" />
+        <h3 className="text-sm font-medium">Enviar diseño al tatuador</h3>
+      </div>
+
+      <div className="flex flex-col gap-2.5">
+        <input
+          type="text"
+          placeholder="Tu nombre (opcional)"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="w-full rounded-lg border border-border/40 bg-background px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+        />
+        <input
+          type="email"
+          placeholder="Tu email de contacto (opcional)"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="w-full rounded-lg border border-border/40 bg-background px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+        />
+        <textarea
+          placeholder="Notas para el tatuador (opcional)"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          rows={2}
+          className="w-full resize-none rounded-lg border border-border/40 bg-background px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+        />
+
+        <div className="flex gap-2 mt-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="flex-1 text-xs"
+            onClick={() => setIsOpen(false)}
+            disabled={isSending}
+          >
+            Cancelar
+          </Button>
+          <Button
+            size="sm"
+            className="flex-1 text-xs gap-1.5"
+            onClick={handleShare}
+            disabled={isSending || isSent}
+          >
+            {isSent ? (
+              <>
+                <CheckIcon className="size-3.5" />
+                Enviado
+              </>
+            ) : isSending ? (
+              "Enviando..."
+            ) : (
+              <>
+                <SendIcon className="size-3.5" />
+                Enviar
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const PurePreviewMessage = ({
-  addToolApprovalResponse,
-  chatId,
   message,
-  vote,
   isLoading,
-  setMessages: _setMessages,
-  regenerate: _regenerate,
-  isReadonly,
-  requiresScrollPadding: _requiresScrollPadding,
-  onEdit,
 }: {
-  addToolApprovalResponse: UseChatHelpers<ChatMessage>["addToolApprovalResponse"];
-  chatId: string;
   message: ChatMessage;
-  vote: Vote | undefined;
   isLoading: boolean;
-  setMessages: UseChatHelpers<ChatMessage>["setMessages"];
-  regenerate: UseChatHelpers<ChatMessage>["regenerate"];
-  isReadonly: boolean;
-  requiresScrollPadding: boolean;
-  onEdit?: (message: ChatMessage) => void;
 }) => {
   const attachmentsFromMessage = message.parts.filter(
     (part) => part.type === "file"
   );
-
-  useDataStream();
 
   const isUser = message.role === "user";
   const isAssistant = message.role === "assistant";
@@ -56,18 +151,12 @@ const PurePreviewMessage = ({
   const hasAnyContent = message.parts?.some(
     (part) =>
       (part.type === "text" && part.text?.trim().length > 0) ||
-      (part.type === "reasoning" &&
-        "text" in part &&
-        part.text?.trim().length > 0) ||
-      part.type.startsWith("tool-")
+      part.type === "file"
   );
   const isThinking = isAssistant && isLoading && !hasAnyContent;
 
-  const attachments = attachmentsFromMessage.length > 0 && (
-    <div
-      className="flex flex-row justify-end gap-2"
-      data-testid={"message-attachments"}
-    >
+  const attachments = attachmentsFromMessage.length > 0 && isUser && (
+    <div className="flex flex-row justify-end gap-2">
       {attachmentsFromMessage.map((attachment) => (
         <PreviewAttachment
           attachment={{
@@ -81,46 +170,19 @@ const PurePreviewMessage = ({
     </div>
   );
 
-  const mergedReasoning = message.parts?.reduce(
-    (acc, part) => {
-      if (part.type === "reasoning" && part.text?.trim().length > 0) {
-        return {
-          text: acc.text ? `${acc.text}\n\n${part.text}` : part.text,
-          isStreaming: "state" in part ? part.state === "streaming" : false,
-          rendered: false,
-        };
-      }
-      return acc;
-    },
-    { text: "", isStreaming: false, rendered: false }
-  ) ?? { text: "", isStreaming: false, rendered: false };
+  // Collect assistant image URLs for sharing
+  const assistantImageUrls: string[] = [];
 
   const parts = message.parts?.map((part, index) => {
-    const { type } = part;
     const key = `message-${message.id}-part-${index}`;
 
-    if (type === "reasoning") {
-      if (!mergedReasoning.rendered && mergedReasoning.text) {
-        mergedReasoning.rendered = true;
-        return (
-          <MessageReasoning
-            isLoading={isLoading || mergedReasoning.isStreaming}
-            key={key}
-            reasoning={mergedReasoning.text}
-          />
-        );
-      }
-      return null;
-    }
-
-    if (type === "text") {
+    if (part.type === "text") {
       return (
         <MessageContent
           className={cn("text-[13px] leading-[1.65]", {
             "w-fit max-w-[min(80%,56ch)] overflow-hidden break-words rounded-2xl rounded-br-lg border border-border/30 bg-gradient-to-br from-secondary to-muted px-3.5 py-2 shadow-[var(--shadow-card)]":
               message.role === "user",
           })}
-          data-testid="message-content"
           key={key}
         >
           <MessageResponse>{sanitizeText(part.text)}</MessageResponse>
@@ -128,204 +190,56 @@ const PurePreviewMessage = ({
       );
     }
 
-    if (type === "tool-getWeather") {
-      const { toolCallId, state } = part;
-      const approvalId = (part as { approval?: { id: string } }).approval?.id;
-      const isDenied =
-        state === "output-denied" ||
-        (state === "approval-responded" &&
-          (part as { approval?: { approved?: boolean } }).approval?.approved ===
-            false);
-      const widthClass = "w-[min(100%,450px)]";
-
-      if (state === "output-available") {
-        return (
-          <div className={widthClass} key={toolCallId}>
-            <Weather weatherAtLocation={part.output} />
-          </div>
-        );
-      }
-
-      if (isDenied) {
-        return (
-          <div className={widthClass} key={toolCallId}>
-            <Tool className="w-full" defaultOpen={true}>
-              <ToolHeader state="output-denied" type="tool-getWeather" />
-              <ToolContent>
-                <div className="px-4 py-3 text-muted-foreground text-sm">
-                  Weather lookup was denied.
-                </div>
-              </ToolContent>
-            </Tool>
-          </div>
-        );
-      }
-
-      if (state === "approval-responded") {
-        return (
-          <div className={widthClass} key={toolCallId}>
-            <Tool className="w-full" defaultOpen={true}>
-              <ToolHeader state={state} type="tool-getWeather" />
-              <ToolContent>
-                <ToolInput input={part.input} />
-              </ToolContent>
-            </Tool>
-          </div>
-        );
-      }
-
+    // Render inline images from assistant (generated tattoo previews)
+    if (part.type === "file" && isAssistant) {
+      assistantImageUrls.push(part.url);
       return (
-        <div className={widthClass} key={toolCallId}>
-          <Tool className="w-full" defaultOpen={true}>
-            <ToolHeader state={state} type="tool-getWeather" />
-            <ToolContent>
-              {(state === "input-available" ||
-                state === "approval-requested") && (
-                <ToolInput input={part.input} />
-              )}
-              {state === "approval-requested" && approvalId && (
-                <div className="flex items-center justify-end gap-2 border-t px-4 py-3">
-                  <button
-                    className="rounded-md px-3 py-1.5 text-muted-foreground text-sm transition-colors hover:bg-muted hover:text-foreground"
-                    onClick={() => {
-                      addToolApprovalResponse({
-                        id: approvalId,
-                        approved: false,
-                        reason: "User denied weather lookup",
-                      });
-                    }}
-                    type="button"
-                  >
-                    Deny
-                  </button>
-                  <button
-                    className="rounded-md bg-primary px-3 py-1.5 text-primary-foreground text-sm transition-colors hover:bg-primary/90"
-                    onClick={() => {
-                      addToolApprovalResponse({
-                        id: approvalId,
-                        approved: true,
-                      });
-                    }}
-                    type="button"
-                  >
-                    Allow
-                  </button>
-                </div>
-              )}
-            </ToolContent>
-          </Tool>
-        </div>
-      );
-    }
-
-    if (type === "tool-createDocument") {
-      const { toolCallId } = part;
-
-      if (part.output && "error" in part.output) {
-        return (
-          <div
-            className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-500 dark:bg-red-950/50"
-            key={toolCallId}
-          >
-            Error creating document: {String(part.output.error)}
-          </div>
-        );
-      }
-
-      return (
-        <DocumentPreview
-          isReadonly={isReadonly}
-          key={toolCallId}
-          result={part.output}
-        />
-      );
-    }
-
-    if (type === "tool-updateDocument") {
-      const { toolCallId } = part;
-
-      if (part.output && "error" in part.output) {
-        return (
-          <div
-            className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-500 dark:bg-red-950/50"
-            key={toolCallId}
-          >
-            Error updating document: {String(part.output.error)}
-          </div>
-        );
-      }
-
-      return (
-        <div className="relative" key={toolCallId}>
-          <DocumentPreview
-            args={{ ...part.output, isUpdate: true }}
-            isReadonly={isReadonly}
-            result={part.output}
+        <div key={key} className="relative group">
+          <Image
+            src={part.url}
+            alt="Tattoo preview"
+            width={512}
+            height={512}
+            className="rounded-xl border border-border/40 shadow-md max-w-full h-auto"
+            unoptimized
           />
+          <Button
+            variant="secondary"
+            size="sm"
+            className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={() => {
+              const link = document.createElement("a");
+              link.href = part.url;
+              link.download = "tattoo-preview.png";
+              link.click();
+            }}
+          >
+            <DownloadIcon className="size-4 mr-1" />
+            Descargar
+          </Button>
         </div>
-      );
-    }
-
-    if (type === "tool-requestSuggestions") {
-      const { toolCallId, state } = part;
-
-      return (
-        <Tool
-          className="w-[min(100%,450px)]"
-          defaultOpen={true}
-          key={toolCallId}
-        >
-          <ToolHeader state={state} type="tool-requestSuggestions" />
-          <ToolContent>
-            {state === "input-available" && <ToolInput input={part.input} />}
-            {state === "output-available" && (
-              <ToolOutput
-                errorText={undefined}
-                output={
-                  "error" in part.output ? (
-                    <div className="rounded border p-2 text-red-500">
-                      Error: {String(part.output.error)}
-                    </div>
-                  ) : (
-                    <DocumentToolResult
-                      isReadonly={isReadonly}
-                      result={part.output}
-                      type="request-suggestions"
-                    />
-                  )
-                }
-              />
-            )}
-          </ToolContent>
-        </Tool>
       );
     }
 
     return null;
   });
 
-  const actions = !isReadonly && (
-    <MessageActions
-      chatId={chatId}
-      isLoading={isLoading}
-      key={`action-${message.id}`}
-      message={message}
-      onEdit={onEdit ? () => onEdit(message) : undefined}
-      vote={vote}
-    />
-  );
-
   const content = isThinking ? (
     <div className="flex h-[calc(13px*1.65)] items-center text-[13px] leading-[1.65]">
       <Shimmer className="font-medium" duration={1}>
-        Thinking...
+        Generando preview...
       </Shimmer>
     </div>
   ) : (
     <>
       {attachments}
       {parts}
-      {actions}
+      {/* Share button after assistant generates images */}
+      {isAssistant && assistantImageUrls.length > 0 && !isLoading && (
+        <div className="mt-3">
+          <ShareWithArtistButton imageUrl={assistantImageUrls[0]} />
+        </div>
+      )}
     </>
   );
 
@@ -336,7 +250,6 @@ const PurePreviewMessage = ({
         !isAssistant && "animate-[fade-up_0.25s_cubic-bezier(0.22,1,0.36,1)]"
       )}
       data-role={message.role}
-      data-testid={`message-${message.role}`}
     >
       <div
         className={cn(
@@ -364,21 +277,16 @@ export const PreviewMessage = PurePreviewMessage;
 
 export const ThinkingMessage = () => {
   return (
-    <div
-      className="group/message w-full"
-      data-role="assistant"
-      data-testid="message-assistant-loading"
-    >
+    <div className="group/message w-full" data-role="assistant">
       <div className="flex items-start gap-3">
         <div className="flex h-[calc(13px*1.65)] shrink-0 items-center">
           <div className="flex size-7 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground ring-1 ring-border/50">
             <SparklesIcon size={13} />
           </div>
         </div>
-
         <div className="flex h-[calc(13px*1.65)] items-center text-[13px] leading-[1.65]">
           <Shimmer className="font-medium" duration={1}>
-            Thinking...
+            Generando preview...
           </Shimmer>
         </div>
       </div>

@@ -1,15 +1,14 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, UnifrakturCook, Sacramento, Cinzel_Decorative } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 import "./globals.css";
-import { SessionProvider } from "next-auth/react";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://chat.vercel.ai"),
-  title: "Next.js Chatbot Template",
-  description: "Next.js chatbot template using the AI SDK.",
+  title: "TatooIA - Preview de Tatuajes",
+  description:
+    "Previsualiza cómo quedará tu tatuaje antes de hacértelo. Sube el diseño y la foto del cuerpo.",
 };
 
 export const viewport = {
@@ -26,6 +25,28 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-geist-mono",
+});
+
+// Tattoo-style fonts
+const unifraktur = UnifrakturCook({
+  weight: "700",
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-gothic",
+});
+
+const sacramento = Sacramento({
+  weight: "400",
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-script",
+});
+
+const cinzel = Cinzel_Decorative({
+  weight: ["400", "700"],
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-ornamental",
 });
 
 const LIGHT_THEME_COLOR = "hsl(0 0% 100%)";
@@ -55,8 +76,8 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      className={`${geist.variable} ${geistMono.variable}`}
-      lang="en"
+      className={`${geist.variable} ${geistMono.variable} ${unifraktur.variable} ${sacramento.variable} ${cinzel.variable}`}
+      lang="es"
       suppressHydrationWarning
     >
       <head>
@@ -74,11 +95,7 @@ export default function RootLayout({
           disableTransitionOnChange
           enableSystem
         >
-          <SessionProvider
-            basePath={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/auth`}
-          >
-            <TooltipProvider>{children}</TooltipProvider>
-          </SessionProvider>
+          <TooltipProvider>{children}</TooltipProvider>
         </ThemeProvider>
       </body>
     </html>

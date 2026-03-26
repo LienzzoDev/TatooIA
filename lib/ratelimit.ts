@@ -3,8 +3,8 @@ import { createClient } from "redis";
 import { isProductionEnvironment } from "@/lib/constants";
 import { ChatbotError } from "@/lib/errors";
 
-const MAX_MESSAGES = 10;
-const TTL_SECONDS = 60 * 60;
+const MAX_GENERATIONS_PER_DAY = 2;
+const TTL_SECONDS = 60 * 60 * 24; // 24 hours
 
 let client: ReturnType<typeof createClient> | null = null;
 
@@ -30,14 +30,14 @@ export async function checkIpRateLimit(ip: string | undefined) {
   }
 
   try {
-    const key = `ip-rate-limit:${ip}`;
+    const key = `tattoo-rate-limit:${ip}`;
     const [count] = await redis
       .multi()
       .incr(key)
       .expire(key, TTL_SECONDS, "NX")
       .exec();
 
-    if (typeof count === "number" && count > MAX_MESSAGES) {
+    if (typeof count === "number" && count > MAX_GENERATIONS_PER_DAY) {
       throw new ChatbotError("rate_limit:chat");
     }
   } catch (error) {

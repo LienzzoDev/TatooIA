@@ -20,18 +20,9 @@ const userMessageSchema = z.object({
   parts: z.array(partSchema),
 });
 
-const toolApprovalMessageSchema = z.object({
-  id: z.string(),
-  role: z.enum(["user", "assistant"]),
-  parts: z.array(z.record(z.unknown())),
-});
-
 export const postRequestBodySchema = z.object({
   id: z.string().uuid(),
-  message: userMessageSchema.optional(),
-  messages: z.array(toolApprovalMessageSchema).optional(),
-  selectedChatModel: z.string(),
-  selectedVisibilityType: z.enum(["public", "private"]),
+  message: userMessageSchema,
 });
 
 export type PostRequestBody = z.infer<typeof postRequestBodySchema>;

@@ -9,6 +9,9 @@
 @plugin "@tailwindcss/typography";
 
 @theme inline {
+  --font-gothic: var(--font-gothic);
+  --font-script: var(--font-script);
+  --font-ornamental: var(--font-ornamental);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

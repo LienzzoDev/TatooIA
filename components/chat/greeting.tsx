@@ -5,19 +5,21 @@ export const Greeting = () => {
     <div className="flex flex-col items-center px-4" key="overview">
       <motion.div
         animate={{ opacity: 1, y: 0 }}
-        className="text-center font-semibold text-2xl tracking-tight text-foreground md:text-3xl"
+        className="text-center font-[family-name:var(--font-ornamental)] text-3xl tracking-wide text-foreground md:text-4xl"
         initial={{ opacity: 0, y: 10 }}
         transition={{ delay: 0.35, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       >
-        What can I help with?
+        Previsualiza tu Tatuaje
       </motion.div>
       <motion.div
         animate={{ opacity: 1, y: 0 }}
-        className="mt-3 text-center text-muted-foreground/80 text-sm"
+        className="mt-4 max-w-lg text-center text-muted-foreground/80 text-sm leading-relaxed"
         initial={{ opacity: 0, y: 10 }}
         transition={{ delay: 0.5, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       >
-        Ask a question, write code, or explore ideas.
+        Sube una imagen del tatuaje que quieres y una foto de la parte del
+        cuerpo donde te lo harías, o simplemente describe lo que quieres. La IA
+        generará un preview realista para ti.
       </motion.div>
     </div>
   );
