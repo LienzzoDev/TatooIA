@@ -29,8 +29,10 @@ export async function POST(request: Request) {
 
   try {
     const json = await request.json();
+    console.log("Chat request body:", JSON.stringify(json, null, 2));
     requestBody = postRequestBodySchema.parse(json);
-  } catch (_) {
+  } catch (error) {
+    console.error("Chat schema validation error:", error);
     return new ChatbotError("bad_request:api").toResponse();
   }
 

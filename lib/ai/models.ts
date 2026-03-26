@@ -1,4 +1,4 @@
-export const DEFAULT_CHAT_MODEL = "google/gemini-3-pro-image";
+export const DEFAULT_CHAT_MODEL = "google/gemini-3.1-flash-image-preview";
 
 export type ChatModel = {
   id: string;
@@ -9,10 +9,10 @@ export type ChatModel = {
 
 export const chatModels: ChatModel[] = [
   {
-    id: "google/gemini-3-pro-image",
-    name: "Gemini 3 Pro Image",
+    id: "google/gemini-3.1-flash-image-preview",
+    name: "Gemini 3.1 Flash Image Preview",
     provider: "google",
-    description: "Image generation model for tattoo previews",
+    description: "Fast image generation model for tattoo previews",
   },
 ];
 

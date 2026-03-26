@@ -1,4 +1,3 @@
-import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -8,9 +7,15 @@ const FileSchema = z.object({
     .refine((file) => file.size <= 5 * 1024 * 1024, {
       message: "File size should be less than 5MB",
     })
-    .refine((file) => ["image/jpeg", "image/png"].includes(file.type), {
-      message: "File type should be JPEG or PNG",
-    }),
+    .refine(
+      (file) =>
+        ["image/jpeg", "image/png", "image/jpg", "image/webp"].includes(
+          file.type
+        ),
+      {
+        message: "File type should be JPEG, PNG or WebP",
+      }
+    ),
 });
 
 export async function POST(request: Request) {
@@ -39,17 +44,16 @@ export async function POST(request: Request) {
     const filename = (formData.get("file") as File).name;
     const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
     const fileBuffer = await file.arrayBuffer();
+    const base64 = Buffer.from(fileBuffer).toString("base64");
+    const dataUrl = `data:${file.type};base64,${base64}`;
 
-    try {
-      const data = await put(`${safeName}`, fileBuffer, {
-        access: "public",
-      });
-
-      return NextResponse.json(data);
-    } catch (_error) {
-      return NextResponse.json({ error: "Upload failed" }, { status: 500 });
-    }
-  } catch (_error) {
+    return NextResponse.json({
+      url: dataUrl,
+      pathname: safeName,
+      contentType: file.type,
+    });
+  } catch (error) {
+    console.error("File upload error:", error);
     return NextResponse.json(
       { error: "Failed to process request" },
       { status: 500 }
